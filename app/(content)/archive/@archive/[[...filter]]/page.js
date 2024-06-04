@@ -1,25 +1,15 @@
 import NewsList from "@/components/news-list"
 import { getAvailableNewsMonths, getAvailableNewsYears, getNewsForYear, getNewsForYearAndMonth } from "@/lib/news";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
-function FilteredNewsPage({ params }) {
-  const filter = params.filter;
-
-  const selectYear = filter?.[0];
-  const selectMonth = filter?.[1];
-
+async function filteredNews({ years, month }) {
   let news;
-  let links = getAvailableNewsYears()
-
-  if (selectYear && !selectMonth) {
-    news = getNewsForYear(selectYear)
-    links = getAvailableNewsMonths(selectYear);
+  if (years && !month) {
+    news = await getNewsForYear(selectYear)
   }
-
-  if (selectYear && selectMonth) {
-    news = getNewsForYearAndMonth(selectYear, selectMonth);
-    links = [];
+  else if (years && month) {
+    news = await getAvailableNewsYears(years, month)
   }
 
   let newsContent = <p>No news found for the selected period</p>
@@ -28,7 +18,30 @@ function FilteredNewsPage({ params }) {
     newsContent = <NewsList news={news} />
   }
 
-  if (selectYear && !getAvailableNewsYears().includes(+selectYear) || selectMonth && !getAvailableNewsMonths(selectMonth).includes(+selectMonth)) {
+  return newsContent;
+
+}
+
+async function FilteredNewsPage({ params }) {
+  const filter = params.filter;
+
+  const selectYear = filter?.[0];
+  const selectMonth = filter?.[1];
+
+  const availabeYears = await getAvailableNewsYears();
+  let links = availabeYears
+
+  if (selectYear && !selectMonth) {
+    links = getAvailableNewsMonths(selectYear);
+  }
+
+  if (selectYear && selectMonth) {
+    links = [];
+  }
+
+
+
+  if (selectYear && !availabeYears().includes(selectYear) || selectMonth && !getAvailableNewsMonths(selectMonth).includes(selectMonth)) {
     throw new Error('Invalid Filter')
   }
 
@@ -51,7 +64,9 @@ function FilteredNewsPage({ params }) {
           </ul>
         </nav>
       </header>
-      {newsContent}
+      <Suspense fallback={<p>Loading... </p>}>
+        <filteredNews years={selectYear} month={selectMonth} />
+      </Suspense>
     </>
   )
 }
